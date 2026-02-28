@@ -1,0 +1,12 @@
+[package]
+name = "menta"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+softbuffer = "0.4.8"
+winit = "0.30.12"
+x11-dl = "2.21.0"
+
+[profile.release]
+opt-level = 1
