@@ -2,7 +2,7 @@ use std::{num::NonZeroU32, rc::Rc};
 
 use winit::window::Window;
 
-pub fn draw_gradient(
+pub fn draw_background(
     surface: &mut softbuffer::Surface<Rc<Window>, Rc<Window>>,
     width: u32,
     height: u32,
@@ -16,16 +16,33 @@ pub fn draw_gradient(
         Err(_) => return,
     };
 
-    for y in 0..height {
-        for x in 0..width {
-            let r = ((x as f32 / width as f32) * 255.0) as u8;
-            let g = 128u8;
-            let b = ((y as f32 / height as f32) * 255.0) as u8;
-            let color = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
-            let index = (y * width + x) as usize;
-            if index < buffer.len() {
-                buffer[index] = color;
+    buffer.fill(0x00000000);
+
+    let rect_width = 373;
+    let rect_height = 150;
+
+    let start_x = (width as i32 - rect_width) / 2;
+    let start_y = (height as i32 - rect_height) / 2;
+
+    for y in 0..rect_height {
+        let draw_y = start_y + y;
+        if draw_y < 0 || draw_y >= height as i32 {
+            continue;
+        }
+
+        for x in 0..rect_width {
+            let draw_x = start_x + x;
+            if draw_x < 0 || draw_x >= width as i32 {
+                continue;
             }
+
+            let color = if x % 7 < 2 {
+                0x7FFF0000 // red separator (50% opacity)
+            } else {
+                0x7F00FF00 // green week (50% opacity)
+            };
+
+            buffer[(draw_y as u32 * width + draw_x as u32) as usize] = color;
         }
     }
 

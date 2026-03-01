@@ -1,8 +1,12 @@
+mod draw;
+mod window;
+
 use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
 
+use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -107,7 +111,6 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(new_size) => {
                 if let Some(surface) = self.surface.as_mut() {
                     draw::resize_surface(surface, new_size.width, new_size.height);
-                    draw::draw_gradient(surface, new_size.width, new_size.height);
                 }
                 self.width = new_size.width;
                 self.height = new_size.height;
@@ -123,7 +126,7 @@ impl ApplicationHandler for App {
                         self.state.last_fps_check = now;
                     }
 
-                    draw::draw_background(surface, self.width, self.height, todo!());
+                    draw::draw_background(surface, self.width, self.height);
                 }
             }
             _ => {}
