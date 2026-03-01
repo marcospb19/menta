@@ -1,3 +1,4 @@
+mod contributions;
 mod draw;
 mod window;
 
@@ -45,6 +46,7 @@ struct App {
     width: u32,
     height: u32,
     state: RenderState,
+    contribution_grid: contributions::ContributionGrid,
 }
 
 impl App {
@@ -57,6 +59,7 @@ impl App {
             width: 0,
             height: 0,
             state: RenderState::new(),
+            contribution_grid: contributions::load_contribution_grid(),
         }
     }
 }
@@ -127,7 +130,12 @@ impl ApplicationHandler for App {
                         self.state.last_fps_check = now;
                     }
 
-                    draw::draw_background(surface, self.width, self.height);
+                    draw::draw_contribution_graph(
+                        surface,
+                        self.width,
+                        self.height,
+                        &self.contribution_grid,
+                    );
                 }
             }
             _ => {}
