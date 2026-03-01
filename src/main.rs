@@ -115,6 +115,20 @@ impl ApplicationHandler for App {
                 self.width = new_size.width;
                 self.height = new_size.height;
             }
+            WindowEvent::RedrawRequested => {
+                if let Some(surface) = self.surface.as_mut() {
+                    self.state.redraw_count += 1;
+
+                    let now = Instant::now();
+                    if now.duration_since(self.state.last_fps_check).as_secs() >= 1 {
+                        println!("FPS: {}", self.state.redraw_count);
+                        self.state.redraw_count = 0;
+                        self.state.last_fps_check = now;
+                    }
+
+                    draw::draw_background(surface, self.width, self.height, todo!());
+                }
+            }
             _ => {}
         }
     }
