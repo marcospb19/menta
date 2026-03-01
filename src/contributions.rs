@@ -34,7 +34,7 @@ pub fn load_contribution_grid() -> ContributionGrid {
             let contents = fs::read_to_string(CACHE_FILE).expect("Failed to read cache file");
             let grid: ContributionGrid =
                 serde_json::from_str(&contents).expect("Failed to deserialize cache file");
-            return rotate_to_monday_start(grid);
+            return trim_to_streak(rotate_to_monday_start(grid));
         }
     }
 
@@ -43,7 +43,7 @@ pub fn load_contribution_grid() -> ContributionGrid {
     let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
     fs::write(CACHE_FILE, json).expect("Failed to write cache file");
 
-    rotate_to_monday_start(grid)
+    trim_to_streak(rotate_to_monday_start(grid))
 }
 
 /// Remap the grid so weeks start on Monday instead of Sunday.
@@ -87,6 +87,104 @@ fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
     }
 
     ContributionGrid { rows: new_rows }
+}
+
+/// Trim the grid to only show the current contribution streak plus 2 extra
+/// weeks of padding before it.
+///
+/// Walks backwards from the most recent day with data, counting consecutive
+/// days with contributions (level > 0). `None` cells (future/missing days) are
+/// skipped. The streak breaks on the first `Some(0)`.
+///
+/// The grid is then trimmed so that the first visible column is
+/// `max(0, streak_start_col - 2)`.
+fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
+    let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    if num_cols == 0 || grid.rows.len() != 7 {
+        return grid;
+    }
+
+    // We iterate backwards through every (col, row) pair.
+    // Within a week the day order is Mon(0)..Sun(6), so the latest day in a
+    // column is row 6 and the earliest is row 0.  Walking backwards means we
+    // go row 6, 5, 4, … 0 then move to the previous column at row 6.
+    let mut col = num_cols - 1;
+    let mut row: usize = 6;
+
+    // Phase 1: skip None cells to find the most recent existing day.
+    loop {
+        let cell = grid.rows[row].get(col).copied().flatten();
+        match cell {
+            Some(_) => break, // found the most recent existing day
+            None => {
+                // move backwards
+                if row == 0 {
+                    if col == 0 {
+                        // entire grid is None — nothing to trim
+                        return grid;
+                    }
+                    col -= 1;
+                    row = 6;
+                } else {
+                    row -= 1;
+                }
+            }
+        }
+    }
+
+    // Initialize streak_start_col to the column of the most recent day.
+    // If the streak is 0 (today is Some(0)), this is the correct fallback.
+    let mut streak_start_col: usize = col;
+
+    // Phase 2: walk backwards through existing days, counting the streak.
+    // `col`/`row` currently point at the most recent existing day.
+    loop {
+        let cell = grid.rows[row].get(col).copied().flatten();
+        match cell {
+            Some(level) if level > 0 => {
+                // streak continues
+                streak_start_col = col;
+            }
+            Some(0) => {
+                // streak broken — don't update streak_start_col,
+                // it already points at the earliest streak day
+                break;
+            }
+            None => {
+                // skip non-existent days — they don't break the streak
+            }
+            _ => unreachable!(),
+        }
+
+        // move backwards
+        if row == 0 {
+            if col == 0 {
+                // reached the very beginning of the grid
+                streak_start_col = 0;
+                break;
+            }
+            col -= 1;
+            row = 6;
+        } else {
+            row -= 1;
+        }
+    }
+
+    let start_col = streak_start_col.saturating_sub(2);
+
+    let rows = grid
+        .rows
+        .into_iter()
+        .map(|row| {
+            if start_col < row.len() {
+                row[start_col..].to_vec()
+            } else {
+                vec![]
+            }
+        })
+        .collect();
+
+    ContributionGrid { rows }
 }
 
 fn fetch_and_parse() -> ContributionGrid {
