@@ -46,12 +46,47 @@ pub fn load_contribution_grid() -> ContributionGrid {
     rotate_to_monday_start(grid)
 }
 
-/// Rotate rows so the week starts on Monday instead of Sunday.
-/// GitHub returns: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
-/// We want:       [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
-fn rotate_to_monday_start(mut grid: ContributionGrid) -> ContributionGrid {
-    grid.rows.rotate_left(1);
-    grid
+/// Remap the grid so weeks start on Monday instead of Sunday.
+///
+/// GitHub's grid has weeks as Sun..Sat columns. We want Mon..Sun columns.
+/// - Sunday (github row 0, col C) moves to: new row 6, col C-1
+///   (it becomes the last day of the *previous* Mon-start week)
+/// - Mon..Sat (github rows 1..6, col C) move to: new row (github_row - 1), same col C
+///
+/// The very first Sunday (col 0) maps to col -1, so it's dropped.
+fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
+    let old_rows = &grid.rows;
+    if old_rows.len() != 7 {
+        return grid;
+    }
+
+    let old_num_cols = old_rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    if old_num_cols == 0 {
+        return grid;
+    }
+
+    // Sunday row may have one more column than Mon-Sat rows (if today is Sunday).
+    // After remapping, the new number of columns stays the same as old_num_cols,
+    // because Sunday shifts left by 1 (losing first, but old_num_cols - 1 is the max
+    // it reaches), and Mon-Sat keep their columns.
+    let new_num_cols = old_num_cols;
+
+    let mut new_rows: Vec<Vec<Option<u8>>> = vec![vec![None; new_num_cols]; 7];
+
+    // Mon..Sat (github rows 1..6) -> new rows 0..5, same column
+    for github_row in 1..7 {
+        let new_row = github_row - 1;
+        for col in 0..old_rows[github_row].len() {
+            new_rows[new_row][col] = old_rows[github_row][col];
+        }
+    }
+
+    // Sunday (github row 0) -> new row 6, column shifted left by 1
+    for col in 1..old_rows[0].len() {
+        new_rows[6][col - 1] = old_rows[0][col];
+    }
+
+    ContributionGrid { rows: new_rows }
 }
 
 fn fetch_and_parse() -> ContributionGrid {
