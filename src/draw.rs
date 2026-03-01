@@ -64,9 +64,9 @@ pub fn draw_contribution_graph(
     let start_y = (height as i32 - rect_height) / 2;
 
     let opacity = OPACITY_PERCENT / 100.0;
-    let sep_color = apply_transparency(100, 100, 100, opacity);
+    let surrounding_color = apply_transparency(0, 0, 0, opacity);
     let level_colors: [u32; 5] = [
-        apply_transparency(0, 0, 0, opacity),     // level 0: black
+        apply_transparency(20, 20, 20, opacity),  // level 0: black
         apply_transparency(0, 150, 0, opacity),   // level 1: dim green
         apply_transparency(10, 180, 10, opacity), // level 2: medium green
         apply_transparency(20, 210, 20, opacity), // level 3: bright green
@@ -97,7 +97,7 @@ pub fn draw_contribution_graph(
                     || cell_exists(grid, row, col - 1)
                     || cell_exists(grid, row - 1, col - 1);
                 if draw {
-                    sep_color
+                    surrounding_color
                 } else {
                     continue;
                 }
@@ -105,7 +105,7 @@ pub fn draw_contribution_graph(
                 // Vertical separator: between col-1 and col, inside row
                 let draw = cell_exists(grid, row, col) || cell_exists(grid, row, col - 1);
                 if draw {
-                    sep_color
+                    surrounding_color
                 } else {
                     continue;
                 }
@@ -113,7 +113,7 @@ pub fn draw_contribution_graph(
                 // Horizontal separator: between row-1 and row, inside col
                 let draw = cell_exists(grid, row, col) || cell_exists(grid, row - 1, col);
                 if draw {
-                    sep_color
+                    surrounding_color
                 } else {
                     continue;
                 }
@@ -129,6 +129,11 @@ pub fn draw_contribution_graph(
             buffer[(draw_y as u32 * width + draw_x as u32) as usize] = color;
         }
     }
+
+    // anchor at right side, with some padding
+    let rotation_anchor_right = 3440 / 2 - num_cols as usize * 10 + 14;
+    let right_padding = 30;
+    buffer.rotate_right(rotation_anchor_right - right_padding);
 
     let _ = buffer.present();
 }

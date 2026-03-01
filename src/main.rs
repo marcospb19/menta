@@ -126,8 +126,7 @@ impl ApplicationHandler for App {
                     let now = Instant::now();
                     if now.duration_since(self.state.last_fps_check).as_secs() >= 1 {
                         println!("FPS: {}", self.state.redraw_count);
-                        self.state.redraw_count = 0;
-                        self.state.last_fps_check = now;
+                        self.state.last_fps_check = now; // avoid fast-forwarding if PC slept
                     }
 
                     draw::draw_contribution_graph(
