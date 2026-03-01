@@ -14,7 +14,7 @@ fn apply_transparency(r: u8, g: u8, b: u8, opacity: f32) -> u32 {
 }
 
 fn cell_exists(grid: &ContributionGrid, row: i32, col: i32) -> bool {
-    if row < 0 || row >= 7 || col < 0 {
+    if !(0..7).contains(&row) || col < 0 {
         return false;
     }
     let row = row as usize;
@@ -26,7 +26,7 @@ fn cell_exists(grid: &ContributionGrid, row: i32, col: i32) -> bool {
 }
 
 fn cell_value(grid: &ContributionGrid, row: i32, col: i32) -> Option<u8> {
-    if row < 0 || row >= 7 || col < 0 {
+    if !(0..7).contains(&row) || col < 0 {
         return None;
     }
     let row = row as usize;
