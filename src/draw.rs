@@ -54,9 +54,9 @@ pub fn draw_contribution_graph(
 
     buffer.fill(0x00000000);
 
-    let num_rows = 7i32;
+    let num_rows = 7_i32;
     let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0) as i32;
-    let cell_size = 21i32;
+    let cell_size = 21_i32;
     let rect_width = num_cols * cell_size + 6;
     let rect_height = num_rows * cell_size + 6;
 
@@ -66,11 +66,11 @@ pub fn draw_contribution_graph(
     let opacity = OPACITY_PERCENT / 100.0;
     let sep_color = apply_transparency(100, 100, 100, opacity);
     let level_colors: [u32; 5] = [
-        apply_transparency(255, 0, 0, opacity), // level 0: red (no contributions)
-        apply_transparency(0, 100, 0, opacity), // level 1: dim green
-        apply_transparency(0, 160, 0, opacity), // level 2: medium green
-        apply_transparency(0, 210, 0, opacity), // level 3: bright green
-        apply_transparency(0, 255, 0, opacity), // level 4: brightest green
+        apply_transparency(0, 0, 0, opacity),     // level 0: black
+        apply_transparency(0, 150, 0, opacity),   // level 1: dim green
+        apply_transparency(10, 180, 10, opacity), // level 2: medium green
+        apply_transparency(20, 210, 20, opacity), // level 3: bright green
+        apply_transparency(50, 255, 50, opacity), // level 4: brightest green
     ];
 
     for y in 0..rect_height {

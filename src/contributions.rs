@@ -108,7 +108,7 @@ fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
     // Within a week the day order is Mon(0)..Sun(6), so the latest day in a
     // column is row 6 and the earliest is row 0.  Walking backwards means we
     // go row 6, 5, 4, … 0 then move to the previous column at row 6.
-    let mut col = num_cols - 1;
+    let mut col = num_cols - 2;
     let mut row: usize = 6;
 
     // Phase 1: skip None cells to find the most recent existing day.
@@ -170,7 +170,7 @@ fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
         }
     }
 
-    let start_col = streak_start_col.saturating_sub(2);
+    let start_col = streak_start_col.saturating_sub(5);
 
     let rows = grid
         .rows

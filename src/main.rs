@@ -16,8 +16,8 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-const MAX_FPS: u64 = 10;
-pub const OPACITY_PERCENT: f32 = 10.0;
+const MAX_FPS: u64 = 1;
+pub const OPACITY_PERCENT: f32 = 70.0;
 
 struct RenderState {
     last_fps_check: Instant,
