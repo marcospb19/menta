@@ -10,7 +10,7 @@ const CACHE_FILE: &str = "graph.json";
 const CACHE_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const CONTRIBUTIONS_URL: &str = "https://github.com/users/marcospb19/contributions";
 
-/// 7 rows (Sunday=0 to Saturday=6), each row has up to 53 columns.
+/// 7 rows (Monday=0 to Sunday=6), each row has up to 53 columns.
 /// Each cell is Option<u8> where:
 ///   - None = day hasn't happened yet (future) or doesn't exist
 ///   - Some(0) = no contributions
@@ -32,7 +32,9 @@ pub fn load_contribution_grid() -> ContributionGrid {
 
         if age < CACHE_MAX_AGE {
             let contents = fs::read_to_string(CACHE_FILE).expect("Failed to read cache file");
-            return serde_json::from_str(&contents).expect("Failed to deserialize cache file");
+            let grid: ContributionGrid =
+                serde_json::from_str(&contents).expect("Failed to deserialize cache file");
+            return rotate_to_monday_start(grid);
         }
     }
 
@@ -41,6 +43,14 @@ pub fn load_contribution_grid() -> ContributionGrid {
     let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
     fs::write(CACHE_FILE, json).expect("Failed to write cache file");
 
+    rotate_to_monday_start(grid)
+}
+
+/// Rotate rows so the week starts on Monday instead of Sunday.
+/// GitHub returns: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+/// We want:       [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+fn rotate_to_monday_start(mut grid: ContributionGrid) -> ContributionGrid {
+    grid.rows.rotate_left(1);
     grid
 }
 
