@@ -11,10 +11,7 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-mod draw;
-mod window;
-
-use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
+const MAX_FPS: u64 = 10;
 
 struct RenderState {
     last_fps_check: Instant,
@@ -133,10 +130,33 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(x11_window_id) = self.x11_window_id {
             keep_window_lowered(x11_window_id);
         }
+
+        let now = Instant::now();
+        let frame_duration_nanos = Duration::from_secs(1).as_nanos() as u64 / MAX_FPS;
+
+        let elapsed_nanos = now.duration_since(self.state.start_time).as_nanos();
+        let expected_frame = (elapsed_nanos / frame_duration_nanos as u128) as u64;
+
+        // If we are more than 5 frames behind, reset start_time to avoid aggressive fast-forwarding
+        if expected_frame > self.state.total_frames + 5 {
+            self.state.start_time =
+                now - Duration::from_nanos(self.state.total_frames * frame_duration_nanos);
+        }
+
+        if expected_frame >= self.state.total_frames {
+            if let Some(window) = self.window.as_ref() {
+                window.request_redraw();
+            }
+            self.state.total_frames = expected_frame + 1;
+        }
+
+        let next_target = self.state.start_time
+            + Duration::from_nanos(self.state.total_frames * frame_duration_nanos);
+        event_loop.set_control_flow(ControlFlow::WaitUntil(next_target));
     }
 }
 
