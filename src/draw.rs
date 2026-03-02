@@ -65,12 +65,12 @@ pub fn draw_contribution_graph(
 
     let opacity = OPACITY_PERCENT / 100.0;
     let surrounding_color = apply_transparency(0, 0, 0, opacity);
-    let level_colors: [u32; 5] = [
-        apply_transparency(20, 20, 20, opacity),  // level 0: black
-        apply_transparency(0, 150, 0, opacity),   // level 1: dim green
-        apply_transparency(10, 180, 10, opacity), // level 2: medium green
-        apply_transparency(20, 210, 20, opacity), // level 3: bright green
-        apply_transparency(50, 255, 50, opacity), // level 4: brightest green
+    let level_colors: &[u32] = &[
+        apply_transparency(20, 20, 20, opacity),
+        apply_transparency(2 * 5, 14 * 5, 5 * 5, opacity),
+        apply_transparency(2 * 8, 14 * 8, 5 * 8, opacity),
+        apply_transparency(2 * 10, 14 * 10, 5 * 10, opacity),
+        apply_transparency(2 * 12, 14 * 12, 5 * 12, opacity),
     ];
 
     for y in 0..rect_height {
@@ -120,7 +120,9 @@ pub fn draw_contribution_graph(
             } else {
                 // Cell content
                 if let Some(level) = cell_value(grid, row, col) {
-                    level_colors[level as usize]
+                    *level_colors
+                        .get(level as usize)
+                        .unwrap_or_else(|| level_colors.last().unwrap())
                 } else {
                     continue;
                 }
