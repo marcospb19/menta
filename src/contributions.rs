@@ -1,12 +1,12 @@
 use std::{
-    fs,
+    env, fs,
+    path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-const CACHE_FILE: &str = "graph.json";
 const CACHE_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const CONTRIBUTIONS_URL: &str = "https://github.com/users/marcospb19/contributions";
 
@@ -21,8 +21,13 @@ pub struct ContributionGrid {
     pub rows: Vec<Vec<Option<u8>>>,
 }
 
+fn contributions_json_cache_path() -> PathBuf {
+    Path::new(&env::var("HOME").expect("HOME environment variable not set"))
+        .join(".contributions.json")
+}
+
 pub fn load_contribution_grid() -> ContributionGrid {
-    if let Ok(metadata) = fs::metadata(CACHE_FILE) {
+    if let Ok(metadata) = fs::metadata(contributions_json_cache_path()) {
         let modified = metadata
             .modified()
             .expect("Failed to read file modification time");
@@ -31,7 +36,8 @@ pub fn load_contribution_grid() -> ContributionGrid {
             .unwrap_or(Duration::MAX);
 
         if age < CACHE_MAX_AGE {
-            let contents = fs::read_to_string(CACHE_FILE).expect("Failed to read cache file");
+            let contents = fs::read_to_string(contributions_json_cache_path())
+                .expect("Failed to read cache file");
             let grid: ContributionGrid =
                 serde_json::from_str(&contents).expect("Failed to deserialize cache file");
             return trim_to_streak(rotate_to_monday_start(grid));
@@ -41,7 +47,7 @@ pub fn load_contribution_grid() -> ContributionGrid {
     let grid = fetch_and_parse();
 
     let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
-    fs::write(CACHE_FILE, json).expect("Failed to write cache file");
+    fs::write(contributions_json_cache_path(), json).expect("Failed to write cache file");
 
     trim_to_streak(rotate_to_monday_start(grid))
 }
