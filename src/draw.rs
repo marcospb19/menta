@@ -131,7 +131,7 @@ pub fn draw_contribution_graph(
     }
 
     // anchor at right side, with some padding
-    let rotation_anchor_right = 3440 / 2 - num_cols as usize * 10 + 14;
+    let rotation_anchor_right = 3440 / 2 - num_cols as usize * 10 - 7;
     let right_padding = 30;
     buffer.rotate_right(rotation_anchor_right - right_padding);
 

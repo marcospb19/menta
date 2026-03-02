@@ -86,6 +86,16 @@ fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
         new_rows[6][col - 1] = old_rows[0][col];
     }
 
+    // After rotation this can happen
+    if new_rows
+        .iter()
+        .all(|row| row.last().is_some_and(Option::is_none))
+    {
+        for row in &mut new_rows {
+            row.pop();
+        }
+    }
+
     ContributionGrid { rows: new_rows }
 }
 
@@ -170,7 +180,7 @@ fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
         }
     }
 
-    let start_col = streak_start_col.saturating_sub(5);
+    let start_col = streak_start_col.saturating_sub(7);
 
     let rows = grid
         .rows
