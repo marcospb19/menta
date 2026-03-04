@@ -6,6 +6,7 @@ use std::{
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use time::{OffsetDateTime, Weekday};
 
 const CACHE_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const CONTRIBUTIONS_URL: &str = "https://github.com/users/marcospb19/contributions";
@@ -40,7 +41,7 @@ pub fn load_contribution_grid() -> ContributionGrid {
                 .expect("Failed to read cache file");
             let grid: ContributionGrid =
                 serde_json::from_str(&contents).expect("Failed to deserialize cache file");
-            return trim_to_streak(rotate_to_monday_start(grid));
+            return trim_to_streak(remove_last_day_if_future(rotate_to_monday_start(grid)));
         }
     }
 
@@ -49,7 +50,7 @@ pub fn load_contribution_grid() -> ContributionGrid {
     let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
     fs::write(contributions_json_cache_path(), json).expect("Failed to write cache file");
 
-    trim_to_streak(rotate_to_monday_start(grid))
+    trim_to_streak(remove_last_day_if_future(rotate_to_monday_start(grid)))
 }
 
 /// Remap the grid so weeks start on Monday instead of Sunday.
@@ -103,6 +104,64 @@ fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
     }
 
     ContributionGrid { rows: new_rows }
+}
+
+/// Removes the last day from the grid if it represents "tomorrow" in local time.
+///
+/// GitHub may be ahead of the user's local timezone, showing a future day
+/// with 0 contributions. This function checks the last day with data in the
+/// grid and removes it if it's ahead of the current local day.
+fn remove_last_day_if_future(grid: ContributionGrid) -> ContributionGrid {
+    let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    if num_cols == 0 || grid.rows.len() != 7 {
+        return grid;
+    }
+
+    // Find the most recent day with data by scanning backwards
+    let mut last_row = 0;
+    let mut last_col = 0;
+    let mut found = false;
+
+    for col in (0..num_cols).rev() {
+        for row in (0..7).rev() {
+            if let Some(Some(_)) = grid.rows[row].get(col) {
+                last_row = row;
+                last_col = col;
+                found = true;
+                break;
+            }
+        }
+        if found {
+            break;
+        }
+    }
+
+    if !found {
+        return grid;
+    }
+
+    // Get local date and current day of week (0=Monday, 6=Sunday)
+    let local_now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
+    let today_row = match local_now.weekday() {
+        Weekday::Monday => 0,
+        Weekday::Tuesday => 1,
+        Weekday::Wednesday => 2,
+        Weekday::Thursday => 3,
+        Weekday::Friday => 4,
+        Weekday::Saturday => 5,
+        Weekday::Sunday => 6,
+    };
+
+    // If the grid's last day is ahead of today's day (future), remove it
+    if last_row > today_row {
+        let last_value = grid.rows[last_row][last_col];
+        assert_eq!(last_value, Some(0), "last day should be 0 when removing");
+        let mut rows = grid.rows;
+        rows[last_row][last_col] = None;
+        return ContributionGrid { rows };
+    }
+
+    grid
 }
 
 /// Trim the grid to only show the current contribution streak plus 2 extra
