@@ -143,6 +143,8 @@ impl ApplicationHandler for App {
                             &self.contribution_grid,
                         );
 
+                        draw::draw_font_atlas(buffer.as_mut(), self.width, self.height);
+
                         let _ = buffer.present();
                     }
                 }

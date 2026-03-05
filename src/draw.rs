@@ -1,5 +1,11 @@
 use std::{num::NonZeroU32, rc::Rc};
 
+use embedded_graphics::{
+    image::GetPixel,
+    mono_font::ascii::FONT_7X13,
+    pixelcolor::BinaryColor,
+    prelude::{OriginDimensions, Point},
+};
 use winit::window::Window;
 
 use crate::{OPACITY_PERCENT, contributions::ContributionGrid};
@@ -124,6 +130,40 @@ pub fn draw_contribution_graph(
     let rotation_anchor_right = 3440 / 2 - column_count as usize * 10 - 7;
     let right_padding = 30;
     buffer.rotate_right(rotation_anchor_right - right_padding);
+}
+
+pub fn draw_font_atlas(buffer: &mut [u32], width: u32, height: u32) {
+    let font_image = &FONT_7X13.image;
+    let img_width = font_image.size().width as i32;
+    let img_height = font_image.size().height as i32;
+
+    let start_x = (width as i32 - img_width) / 2;
+    let start_y = (height as i32 - img_height) / 2;
+
+    for y in 0..img_height {
+        let draw_y = start_y + y;
+        if draw_y < 0 || draw_y >= height as i32 {
+            continue;
+        }
+
+        for x in 0..img_width {
+            let draw_x = start_x + x;
+            if draw_x < 0 || draw_x >= width as i32 {
+                continue;
+            }
+
+            let point = Point::new(x, y);
+            if let Some(color) = font_image.pixel(point) {
+                let color = if color == BinaryColor::On {
+                    0xffffffff
+                } else {
+                    0x00000000
+                };
+                let index = draw_y as u32 * width + draw_x as u32;
+                buffer[index as usize] = color;
+            }
+        }
+    }
 }
 
 pub fn resize_surface(
