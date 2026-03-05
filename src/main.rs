@@ -130,12 +130,21 @@ impl ApplicationHandler for App {
                         self.state.last_fps_check = now;
                     }
 
-                    draw::draw_contribution_graph(
-                        surface,
-                        self.width,
-                        self.height,
-                        &self.contribution_grid,
-                    );
+                    if let Ok(mut buffer) = surface.buffer_mut()
+                        && self.width > 0
+                        && self.height > 0
+                    {
+                        buffer.fill(0x00000000);
+
+                        draw::draw_contribution_graph(
+                            buffer.as_mut(),
+                            self.width,
+                            self.height,
+                            &self.contribution_grid,
+                        );
+
+                        let _ = buffer.present();
+                    }
                 }
             }
             _ => {}

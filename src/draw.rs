@@ -13,8 +13,8 @@ fn apply_transparency(r: u8, g: u8, b: u8, opacity: f32) -> u32 {
     ((alpha as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
 }
 
-fn cell_exists(grid: &ContributionGrid, row: i32, col: i32) -> bool {
-    if !(0..7).contains(&row) || col < 0 {
+fn cell_exists(grid: &ContributionGrid, row: u32, col: u32) -> bool {
+    if !(0..7).contains(&row) {
         return false;
     }
     let row = row as usize;
@@ -25,8 +25,8 @@ fn cell_exists(grid: &ContributionGrid, row: i32, col: i32) -> bool {
     grid.rows[row][col].is_some()
 }
 
-fn cell_value(grid: &ContributionGrid, row: i32, col: i32) -> Option<u8> {
-    if !(0..7).contains(&row) || col < 0 {
+fn cell_value(grid: &ContributionGrid, row: u32, col: u32) -> Option<u8> {
+    if !(0..7).contains(&row) {
         return None;
     }
     let row = row as usize;
@@ -38,30 +38,21 @@ fn cell_value(grid: &ContributionGrid, row: i32, col: i32) -> Option<u8> {
 }
 
 pub fn draw_contribution_graph(
-    surface: &mut softbuffer::Surface<Rc<Window>, Rc<Window>>,
+    buffer: &mut [u32],
     width: u32,
     height: u32,
     grid: &ContributionGrid,
 ) {
-    if width == 0 || height == 0 {
-        return;
-    }
+    let row_count: u32 = 7;
+    let column_count = grid.column_count() as u32;
 
-    let mut buffer = match surface.buffer_mut() {
-        Ok(b) => b,
-        Err(_) => return,
-    };
+    let square_cell_size: u32 = 21;
+    // Dimensions of the entire
+    let total_rect_width = column_count * square_cell_size + 6;
+    let total_rect_height = row_count * square_cell_size + 6;
 
-    buffer.fill(0x00000000);
-
-    let num_rows = 7_i32;
-    let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0) as i32;
-    let cell_size = 21_i32;
-    let rect_width = num_cols * cell_size + 6;
-    let rect_height = num_rows * cell_size + 6;
-
-    let start_x = (width as i32 - rect_width) / 2;
-    let start_y = (height as i32 - rect_height) / 2;
+    let start_x = width.checked_sub(total_rect_width).unwrap() / 2;
+    let start_y = height.checked_sub(total_rect_height).unwrap() / 2;
 
     let opacity = OPACITY_PERCENT / 100.0;
     let surrounding_color = apply_transparency(0, 0, 0, opacity);
@@ -73,29 +64,25 @@ pub fn draw_contribution_graph(
         apply_transparency(2 * 12, 14 * 12, 5 * 12, opacity),
     ];
 
-    for y in 0..rect_height {
+    for y in 0..total_rect_height {
         let draw_y = start_y + y;
-        if draw_y < 0 || draw_y >= height as i32 {
-            continue;
-        }
+        assert!(draw_y < height);
 
-        for x in 0..rect_width {
+        for x in 0..total_rect_width {
             let draw_x = start_x + x;
-            if draw_x < 0 || draw_x >= width as i32 {
-                continue;
-            }
+            assert!(draw_x < width);
 
-            let col = x / cell_size;
-            let row = y / cell_size;
-            let in_sep_x = x % cell_size < 6;
-            let in_sep_y = y % cell_size < 6;
+            let col = x / square_cell_size;
+            let row = y / square_cell_size;
+            let in_sep_x = x % square_cell_size < 6;
+            let in_sep_y = y % square_cell_size < 6;
 
             let color = if in_sep_x && in_sep_y {
                 // Corner: draw if any of the 4 adjacent cells exist
                 let draw = cell_exists(grid, row, col)
-                    || cell_exists(grid, row - 1, col)
-                    || cell_exists(grid, row, col - 1)
-                    || cell_exists(grid, row - 1, col - 1);
+                    || cell_exists(grid, row.saturating_sub(1), col)
+                    || cell_exists(grid, row, col.saturating_sub(1))
+                    || cell_exists(grid, row.saturating_sub(1), col.saturating_sub(1));
                 if draw {
                     surrounding_color
                 } else {
@@ -128,16 +115,15 @@ pub fn draw_contribution_graph(
                 }
             };
 
-            buffer[(draw_y as u32 * width + draw_x as u32) as usize] = color;
+            let index = draw_y * width + draw_x;
+            buffer[index as usize] = color;
         }
     }
 
     // anchor at right side, with some padding
-    let rotation_anchor_right = 3440 / 2 - num_cols as usize * 10 - 7;
+    let rotation_anchor_right = 3440 / 2 - column_count as usize * 10 - 7;
     let right_padding = 30;
     buffer.rotate_right(rotation_anchor_right - right_padding);
-
-    let _ = buffer.present();
 }
 
 pub fn resize_surface(

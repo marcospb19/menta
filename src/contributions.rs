@@ -22,6 +22,12 @@ pub struct ContributionGrid {
     pub rows: Vec<Vec<Option<u8>>>,
 }
 
+impl ContributionGrid {
+    pub fn column_count(&self) -> usize {
+        self.rows.iter().map(Vec::len).max().unwrap_or(0)
+    }
+}
+
 fn contributions_json_cache_path() -> PathBuf {
     Path::new(&env::var("HOME").expect("HOME environment variable not set"))
         .join(".contributions.json")
