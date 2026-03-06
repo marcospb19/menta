@@ -136,14 +136,14 @@ impl ApplicationHandler for App {
                     {
                         buffer.fill(0x00000000);
 
-                        draw::draw_contribution_graph(
+                        draw::graph::draw_contribution_graph(
                             buffer.as_mut(),
                             self.width,
                             self.height,
                             &self.contribution_grid,
                         );
 
-                        draw::draw_font_atlas(buffer.as_mut(), self.width, self.height);
+                        draw::text::draw_font_atlas(buffer.as_mut(), self.width, self.height);
 
                         let _ = buffer.present();
                     }
