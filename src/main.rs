@@ -4,9 +4,12 @@ mod window;
 
 use std::{
     rc::Rc,
+    sync::mpsc::{Receiver, channel},
+    thread,
     time::{Duration, Instant},
 };
 
+use time::Weekday;
 use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{
     application::ApplicationHandler,
@@ -15,6 +18,8 @@ use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowAttributes, WindowId},
 };
+
+use crate::contributions::{ContributionGrid, load_contribution_grid};
 
 const MAX_FPS: u64 = 1;
 pub const OPACITY_PERCENT: f32 = 50.0;
@@ -46,11 +51,15 @@ struct App {
     width: u32,
     height: u32,
     state: RenderState,
-    contribution_grid: contributions::ContributionGrid,
+    contribution_grid: ContributionGrid,
+    current_day: Weekday,
+    graph_receiver: Option<Receiver<ContributionGrid>>,
 }
 
 impl App {
     fn new() -> Self {
+        let today = time::OffsetDateTime::now_local().unwrap().weekday();
+
         Self {
             window: None,
             context: None,
@@ -59,7 +68,33 @@ impl App {
             width: 0,
             height: 0,
             state: RenderState::new(),
-            contribution_grid: contributions::load_contribution_grid(),
+            contribution_grid: load_contribution_grid(false),
+            current_day: today,
+            graph_receiver: None,
+        }
+    }
+
+    fn check_and_reload_if_new_day(&mut self) {
+        let today = time::OffsetDateTime::now_local().unwrap().weekday();
+
+        if today != self.current_day {
+            self.current_day = today;
+
+            let (sender, receiver) = channel::<ContributionGrid>();
+            self.graph_receiver = Some(receiver);
+
+            thread::spawn(move || {
+                let grid = contributions::load_contribution_grid(true);
+                let _ = sender.send(grid);
+            });
+        }
+
+        // try receive and update new grid
+        if let Some(receiver) = &self.graph_receiver
+            && let Ok(new_grid) = receiver.try_recv()
+        {
+            self.contribution_grid = new_grid;
+            self.graph_receiver = None;
         }
     }
 }
@@ -108,6 +143,8 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
+        self.check_and_reload_if_new_day();
+
         match event {
             WindowEvent::CloseRequested => {
                 event_loop.exit();

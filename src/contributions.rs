@@ -8,7 +8,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, Weekday};
 
-const CACHE_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const CONTRIBUTIONS_URL: &str = "https://github.com/users/marcospb19/contributions";
 
 /// 7 rows (Monday=0 to Sunday=6), each row has up to 53 columns.
@@ -33,28 +32,41 @@ fn contributions_json_cache_path() -> PathBuf {
         .join(".contributions.json")
 }
 
-pub fn load_contribution_grid() -> ContributionGrid {
-    if let Ok(metadata) = fs::metadata(contributions_json_cache_path()) {
-        let modified = metadata
-            .modified()
-            .expect("Failed to read file modification time");
-        let age = SystemTime::now()
-            .duration_since(modified)
-            .unwrap_or(Duration::MAX);
+pub fn load_contribution_grid(force_update: bool) -> ContributionGrid {
+    let should_read_from_cache = 'should_read_from_cache: {
+        if let Ok(metadata) = fs::metadata(contributions_json_cache_path())
+            && !force_update
+        {
+            let modified = metadata
+                .modified()
+                .expect("Failed to read file modification time");
+            let age = SystemTime::now()
+                .duration_since(modified)
+                .unwrap_or(Duration::MAX);
 
-        if age < CACHE_MAX_AGE {
-            let contents = fs::read_to_string(contributions_json_cache_path())
-                .expect("Failed to read cache file");
-            let grid: ContributionGrid =
-                serde_json::from_str(&contents).expect("Failed to deserialize cache file");
-            return trim_to_streak(remove_last_day_if_future(rotate_to_monday_start(grid)));
+            const TWO_HOURS: Duration = Duration::from_secs(60 * 60 * 2);
+
+            if age < TWO_HOURS {
+                break 'should_read_from_cache true;
+            }
         }
+
+        break 'should_read_from_cache false;
+    };
+
+    let grid: ContributionGrid = if should_read_from_cache {
+        let contents =
+            fs::read_to_string(contributions_json_cache_path()).expect("Failed to read cache file");
+        serde_json::from_str(&contents).expect("Failed to deserialize cache file")
+    } else {
+        fetch_grid_and_parse()
+    };
+
+    // also update the cache
+    if !should_read_from_cache {
+        let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
+        fs::write(contributions_json_cache_path(), json).expect("Failed to write cache file");
     }
-
-    let grid = fetch_and_parse();
-
-    let json = serde_json::to_string(&grid).expect("Failed to serialize contribution grid");
-    fs::write(contributions_json_cache_path(), json).expect("Failed to write cache file");
 
     trim_to_streak(remove_last_day_if_future(rotate_to_monday_start(grid)))
 }
@@ -268,7 +280,7 @@ fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
     ContributionGrid { rows }
 }
 
-fn fetch_and_parse() -> ContributionGrid {
+fn fetch_grid_and_parse() -> ContributionGrid {
     let html = reqwest::blocking::get(CONTRIBUTIONS_URL)
         .expect("Failed to fetch contributions page")
         .text()
