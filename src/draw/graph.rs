@@ -1,4 +1,4 @@
-use crate::{OPACITY_PERCENT, contributions::ContributionGrid, draw::apply_transparency};
+use crate::{contributions::ContributionGrid, draw::apply_transparency};
 
 const DAYS_IN_WEEK: u32 = 7;
 const SQUARE_SIZE: u32 = 21;
@@ -42,14 +42,13 @@ pub fn draw_contribution_graph(
     let start_x = width.checked_sub(total_rect_width).unwrap() / 2;
     let start_y = height.checked_sub(total_rect_height).unwrap() / 2;
 
-    let opacity = OPACITY_PERCENT / 100.0;
-    let surrounding_color = apply_transparency(0, 0, 0, opacity);
+    let surrounding_color = apply_transparency(0, 0, 0);
     let level_colors: &[u32] = &[
-        apply_transparency(20, 20, 20, opacity),
-        apply_transparency(2 * 5, 14 * 5, 5 * 5, opacity),
-        apply_transparency(2 * 8, 14 * 8, 5 * 8, opacity),
-        apply_transparency(2 * 10, 14 * 10, 5 * 10, opacity),
-        apply_transparency(2 * 12, 14 * 12, 5 * 12, opacity),
+        apply_transparency(20, 20, 20),
+        apply_transparency(2 * 5, 14 * 5, 5 * 5),
+        apply_transparency(2 * 8, 14 * 8, 5 * 8),
+        apply_transparency(2 * 10, 14 * 10, 5 * 10),
+        apply_transparency(2 * 12, 14 * 12, 5 * 12),
     ];
 
     for y in 0..total_rect_height {

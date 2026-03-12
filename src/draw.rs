@@ -2,10 +2,14 @@ use std::{num::NonZeroU32, rc::Rc};
 
 use winit::window::Window;
 
+use crate::OPACITY_PERCENT;
+
 pub mod graph;
 pub mod text;
 
-pub fn apply_transparency(r: u8, g: u8, b: u8, opacity: f32) -> u32 {
+pub fn apply_transparency(r: u8, g: u8, b: u8) -> u32 {
+    let opacity = OPACITY_PERCENT / 100.0;
+
     let alpha = (opacity * 255.0).round() as u8;
     let r = ((r as f32) * opacity).round() as u8;
     let g = ((g as f32) * opacity).round() as u8;

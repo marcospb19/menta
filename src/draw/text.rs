@@ -8,6 +8,8 @@ use embedded_graphics::{
     prelude::*,
 };
 
+use crate::draw::apply_transparency;
+
 const FONT: mono_font::MonoFont = mono_font::ascii::FONT_7X13;
 static FONT_CHAR_WIDTH: LazyLock<u32> = LazyLock::new(|| FONT.image.size().width / 16);
 static FONT_CHAR_HEIGHT: LazyLock<u32> = LazyLock::new(|| FONT.image.size().height / 6);
@@ -107,17 +109,6 @@ fn wrap_text(text: &str, max_line_len: usize) -> Vec<String> {
 }
 
 pub fn draw_text(buffer: &mut [u32], width: u32, height: u32, text: &str, scale: u8) {
-    draw_text_wrapped(buffer, width, height, text, scale, None);
-}
-
-pub fn draw_text_wrapped(
-    buffer: &mut [u32],
-    width: u32,
-    height: u32,
-    text: &str,
-    scale: u8,
-    wrap_width: Option<usize>,
-) {
     let font_image = &FONT.image;
     let img_width = font_image.size().width;
     let chars_per_row = img_width / *FONT_CHAR_WIDTH;
@@ -128,7 +119,7 @@ pub fn draw_text_wrapped(
 
     // Wrap text into lines
     let text_len = text.chars().count();
-    let wrap_width = wrap_width.unwrap_or_else(|| default_wrap_width(text_len, width, height));
+    let wrap_width = default_wrap_width(text_len, width, height);
 
     let mut lines = wrap_text(text, wrap_width);
     if lines.is_empty() {
@@ -170,7 +161,7 @@ pub fn draw_text_wrapped(
                         chars_per_row,
                     );
                     let color = if color == BinaryColor::On {
-                        0xffff_ffff
+                        apply_transparency(0x85, 0x85, 0x85)
                     } else {
                         0x0000_0000
                     };
