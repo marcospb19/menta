@@ -139,9 +139,9 @@ pub fn draw_text_wrapped(
     let rect_width = max_line_len * scaled_char_width;
     let rect_height = lines.len() as u32 * scaled_char_height;
 
-    // top-left corner position
-    let rect_origin_x = (width - rect_width) / 2;
-    let rect_origin_y = (height - rect_height) / 2;
+    // top-left corner position (clamp to 0 to prevent overflow)
+    let rect_origin_x = width.saturating_sub(rect_width) / 2;
+    let rect_origin_y = height.saturating_sub(rect_height) / 2;
 
     for (line_idx, line) in lines.iter().enumerate() {
         let line_origin_y = rect_origin_y + line_idx as u32 * scaled_char_height;
@@ -169,8 +169,12 @@ pub fn draw_text_wrapped(
                     } else {
                         0x0000_0000
                     };
-                    let index = screen_pixel_y * width + screen_pixel_x;
-                    buffer[index as usize] = color;
+
+                    // Bounds check before writing to buffer
+                    if screen_pixel_x < width && screen_pixel_y < height {
+                        let index = screen_pixel_y * width + screen_pixel_x;
+                        buffer[index as usize] = color;
+                    }
                 }
             }
         }

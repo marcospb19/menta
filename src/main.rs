@@ -6,12 +6,14 @@ mod window;
 
 use std::{
     num::NonZeroU32,
+    path::PathBuf,
     rc::Rc,
     sync::mpsc::{Receiver, channel},
     thread,
     time::{Duration, Instant},
 };
 
+use notify::{RecursiveMode, Watcher};
 use time::Weekday;
 use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{
@@ -27,23 +29,14 @@ use crate::contributions::{ContributionGrid, load_contribution_grid};
 const MAX_FPS: u64 = 1;
 pub const OPACITY_PERCENT: f32 = 50.0;
 
-struct RenderState {
-    last_fps_check: Instant,
-    redraw_count: u32,
-    start_time: Instant,
-    total_frames: u64,
-}
+fn main() {
+    let mut app = App::new();
 
-impl RenderState {
-    fn new() -> Self {
-        let now = Instant::now();
-        Self {
-            last_fps_check: now,
-            redraw_count: 0,
-            start_time: now,
-            total_frames: 0,
-        }
-    }
+    // check `impl ApplicationHandler for App`
+    EventLoop::new()
+        .expect("Failed to create event loop")
+        .run_app(&mut app)
+        .expect("Event loop error");
 }
 
 struct App {
@@ -51,55 +44,95 @@ struct App {
     context: Option<softbuffer::Context<Rc<Window>>>,
     surface: Option<softbuffer::Surface<Rc<Window>, Rc<Window>>>,
     x11_window_id: Option<x11_dl::xlib::Window>,
-    width: u32,
-    height: u32,
+    screen_width: u32,
+    screen_height: u32,
     state: RenderState,
     contribution_grid: ContributionGrid,
     current_day: Weekday,
-    graph_receiver: Option<Receiver<ContributionGrid>>,
+    grid_receiver: Option<Receiver<ContributionGrid>>,
+    todo_text: String,
+    file_content_receiver: Receiver<String>,
 }
 
 impl App {
     fn new() -> Self {
-        let today = time::OffsetDateTime::now_local().unwrap().weekday();
-
         Self {
             window: None,
             context: None,
             surface: None,
             x11_window_id: None,
-            width: 0,
-            height: 0,
+            screen_width: 0,
+            screen_height: 0,
             state: RenderState::new(),
             contribution_grid: load_contribution_grid(false),
-            current_day: today,
-            graph_receiver: None,
+            current_day: time::OffsetDateTime::now_local().unwrap().weekday(),
+            grid_receiver: None,
+            todo_text: String::new(),
+            file_content_receiver: spawn_file_watcher_thread(),
         }
     }
 
-    fn check_and_reload_if_new_day(&mut self) {
+    fn check_contributions_grid_update_after_midnight(&mut self) {
         let today = time::OffsetDateTime::now_local().unwrap().weekday();
+
+        if let Some(graph_receiver) = &self.grid_receiver {
+            if let Ok(new_grid) = graph_receiver.try_recv() {
+                self.contribution_grid = new_grid;
+                self.grid_receiver = None;
+            }
+
+            return;
+        }
 
         if today != self.current_day {
             self.current_day = today;
 
             let (sender, receiver) = channel::<ContributionGrid>();
-            self.graph_receiver = Some(receiver);
+            self.grid_receiver = Some(receiver);
 
             thread::spawn(move || {
                 let grid = contributions::load_contribution_grid(true);
                 let _ = sender.send(grid);
             });
         }
+    }
 
-        // try receive and update new grid
-        if let Some(receiver) = &self.graph_receiver
-            && let Ok(new_grid) = receiver.try_recv()
-        {
-            self.contribution_grid = new_grid;
-            self.graph_receiver = None;
+    fn check_todo_updates(&mut self) {
+        while let Ok(new_text) = self.file_content_receiver.try_recv() {
+            self.todo_text = new_text;
         }
     }
+}
+
+fn spawn_file_watcher_thread() -> Receiver<String> {
+    let (todo_sender, todo_receiver) = channel::<String>();
+    let todo_path = PathBuf::from(std::env::var("HOME").unwrap()).join("todo.txt");
+
+    thread::spawn(move || {
+        // Read initial content
+        if let Ok(content) = std::fs::read_to_string(&todo_path) {
+            let _ = todo_sender.send(content);
+        }
+
+        let (tx, rx) = channel();
+        let mut watcher = notify::recommended_watcher(tx).unwrap();
+
+        if let Err(err) = watcher.watch(&todo_path, RecursiveMode::NonRecursive) {
+            eprintln!("failed to start watching todo_path {err}");
+            return;
+        }
+
+        // Wait for events and send updates
+        for _ in rx.iter().filter_map(Result::ok) {
+            let Ok(content) = std::fs::read_to_string(&todo_path) else {
+                eprintln!("failed to read");
+                return;
+            };
+            let _ = todo_sender.send(content);
+        }
+    });
+
+    todo_receiver
 }
 
 impl ApplicationHandler for App {
@@ -119,8 +152,8 @@ impl ApplicationHandler for App {
             let window_rc = Rc::new(window);
             let ScreenDimensions { width, height } =
                 setup_x11_window(&window_rc, &mut self.x11_window_id);
-            self.width = width;
-            self.height = height;
+            self.screen_width = width;
+            self.screen_height = height;
 
             let _ = window_rc.request_inner_size(PhysicalSize::new(width, height));
             window_rc.set_visible(true);
@@ -136,7 +169,7 @@ impl ApplicationHandler for App {
         }
 
         if let Some(surface) = self.surface.as_mut() {
-            draw::resize_surface(surface, self.width, self.height);
+            draw::resize_surface(surface, self.screen_width, self.screen_height);
         }
     }
 
@@ -146,7 +179,8 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        self.check_and_reload_if_new_day();
+        self.check_contributions_grid_update_after_midnight();
+        self.check_todo_updates();
 
         match event {
             WindowEvent::CloseRequested => {
@@ -158,8 +192,8 @@ impl ApplicationHandler for App {
                     && let Some(height) = NonZeroU32::new(new_size.height)
                 {
                     let _ = surface.resize(width, height);
-                    self.width = new_size.width;
-                    self.height = new_size.height;
+                    self.screen_width = new_size.width;
+                    self.screen_height = new_size.height;
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -174,25 +208,30 @@ impl ApplicationHandler for App {
                     }
 
                     if let Ok(mut buffer) = surface.buffer_mut()
-                        && self.width > 0
-                        && self.height > 0
+                        && self.screen_width > 0
+                        && self.screen_height > 0
                     {
                         buffer.fill(0x0000_0000);
 
                         draw::graph::draw_contribution_graph(
                             buffer.as_mut(),
-                            self.width,
-                            self.height,
+                            self.screen_width,
+                            self.screen_height,
                             &self.contribution_grid,
                         );
 
-                        let font_scale = if self.height > 1080 { 3 } else { 2 };
+                        let font_scale = if self.todo_text.len() < 1024 && self.screen_height > 1080
+                        {
+                            4
+                        } else {
+                            3
+                        };
 
                         draw::text::draw_text(
                             buffer.as_mut(),
-                            self.width,
-                            self.height,
-                            "the     quick brown fox jumps over the lazy dog",
+                            self.screen_width,
+                            self.screen_height,
+                            &self.todo_text,
                             font_scale,
                         );
 
@@ -234,10 +273,21 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() {
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
-    event_loop.set_control_flow(ControlFlow::Wait);
+struct RenderState {
+    last_fps_check: Instant,
+    redraw_count: u32,
+    start_time: Instant,
+    total_frames: u64,
+}
 
-    let mut app = App::new();
-    event_loop.run_app(&mut app).expect("Event loop error");
+impl RenderState {
+    fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            last_fps_check: now,
+            redraw_count: 0,
+            start_time: now,
+            total_frames: 0,
+        }
+    }
 }
