@@ -1,7 +1,11 @@
 use crate::{OPACITY_PERCENT, contributions::ContributionGrid, draw::apply_transparency};
 
+const DAYS_IN_WEEK: u32 = 7;
+const SQUARE_SIZE: u32 = 21;
+const GAP_SIZE: u32 = 6;
+
 fn cell_exists(grid: &ContributionGrid, row: u32, col: u32) -> bool {
-    if !(0..7).contains(&row) {
+    if !(0..DAYS_IN_WEEK).contains(&row) {
         return false;
     }
     let row = row as usize;
@@ -13,7 +17,7 @@ fn cell_exists(grid: &ContributionGrid, row: u32, col: u32) -> bool {
 }
 
 fn cell_value(grid: &ContributionGrid, row: u32, col: u32) -> Option<u8> {
-    if !(0..7).contains(&row) {
+    if !(0..DAYS_IN_WEEK).contains(&row) {
         return None;
     }
     let row = row as usize;
@@ -30,12 +34,10 @@ pub fn draw_contribution_graph(
     height: u32,
     grid: &ContributionGrid,
 ) {
-    let row_count: u32 = 7;
     let column_count = grid.column_count() as u32;
 
-    let square_cell_size: u32 = 21;
-    let total_rect_width = column_count * square_cell_size + 6;
-    let total_rect_height = row_count * square_cell_size + 6;
+    let total_rect_width = column_count * SQUARE_SIZE + GAP_SIZE;
+    let total_rect_height = DAYS_IN_WEEK * SQUARE_SIZE + GAP_SIZE;
 
     let start_x = width.checked_sub(total_rect_width).unwrap() / 2;
     let start_y = height.checked_sub(total_rect_height).unwrap() / 2;
@@ -58,10 +60,10 @@ pub fn draw_contribution_graph(
             let draw_x = start_x + x;
             assert!(draw_x < width);
 
-            let col = x / square_cell_size;
-            let row = y / square_cell_size;
-            let in_sep_x = x % square_cell_size < 6;
-            let in_sep_y = y % square_cell_size < 6;
+            let col = x / SQUARE_SIZE;
+            let row = y / SQUARE_SIZE;
+            let in_sep_x = x % SQUARE_SIZE < GAP_SIZE;
+            let in_sep_y = y % SQUARE_SIZE < GAP_SIZE;
 
             let color = if in_sep_x && in_sep_y {
                 let draw = cell_exists(grid, row, col)
