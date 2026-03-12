@@ -3,6 +3,7 @@ mod draw;
 mod window;
 
 use std::{
+    num::NonZeroU32,
     rc::Rc,
     sync::mpsc::{Receiver, channel},
     thread,
@@ -150,11 +151,14 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::Resized(new_size) => {
-                if let Some(surface) = self.surface.as_mut() {
-                    draw::resize_surface(surface, new_size.width, new_size.height);
+                if let Some(surface) = self.surface.as_mut()
+                    && let Some(width) = NonZeroU32::new(new_size.width)
+                    && let Some(height) = NonZeroU32::new(new_size.height)
+                {
+                    let _ = surface.resize(width, height);
+                    self.width = new_size.width;
+                    self.height = new_size.height;
                 }
-                self.width = new_size.width;
-                self.height = new_size.height;
             }
             WindowEvent::RedrawRequested => {
                 if let Some(surface) = self.surface.as_mut() {
@@ -184,7 +188,7 @@ impl ApplicationHandler for App {
                             buffer.as_mut(),
                             self.width,
                             self.height,
-                            "the quick brown fox jumps over the lazy dog",
+                            "the   quick brown fox jumps over the lazy dog",
                             3,
                         );
 
