@@ -180,7 +180,13 @@ impl ApplicationHandler for App {
                             &self.contribution_grid,
                         );
 
-                        draw::text::draw_font_atlas(buffer.as_mut(), self.width, self.height, 3);
+                        draw::text::draw_text(
+                            buffer.as_mut(),
+                            self.width,
+                            self.height,
+                            "the quick brown fox jumps over the lazy dog",
+                            3,
+                        );
 
                         let _ = buffer.present();
                     }
