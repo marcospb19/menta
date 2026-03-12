@@ -1,3 +1,5 @@
+#![feature(iter_intersperse)]
+
 mod contributions;
 mod draw;
 mod window;
@@ -184,12 +186,14 @@ impl ApplicationHandler for App {
                             &self.contribution_grid,
                         );
 
+                        let font_scale = if self.height > 1080 { 3 } else { 2 };
+
                         draw::text::draw_text(
                             buffer.as_mut(),
                             self.width,
                             self.height,
-                            "the   quick brown fox jumps over the lazy dog",
-                            3,
+                            "the     quick brown fox jumps over the lazy dog",
+                            font_scale,
                         );
 
                         let _ = buffer.present();
