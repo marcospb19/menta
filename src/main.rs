@@ -28,6 +28,7 @@ use crate::contributions::{ContributionGrid, load_contribution_grid};
 
 const MAX_FPS: u64 = 1;
 pub const OPACITY_PERCENT: f32 = 50.0;
+pub const CLEAR_VERTICAL_BORDERS_HEIGHT: u32 = 24;
 
 fn main() {
     let mut app = App::new();
@@ -230,6 +231,15 @@ impl ApplicationHandler for App {
                             &self.todo_text,
                             font_scale,
                         );
+
+                        if CLEAR_VERTICAL_BORDERS_HEIGHT > 0 {
+                            let border_pixel_count =
+                                (self.screen_width * CLEAR_VERTICAL_BORDERS_HEIGHT) as usize;
+                            let len = buffer.len();
+
+                            buffer[..border_pixel_count as usize].fill(0x0);
+                            buffer[len - border_pixel_count as usize..].fill(0x0);
+                        }
 
                         let _ = buffer.present();
                     }
