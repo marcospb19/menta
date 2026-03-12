@@ -220,12 +220,8 @@ impl ApplicationHandler for App {
                             &self.contribution_grid,
                         );
 
-                        let font_scale = if self.todo_text.len() < 1024 && self.screen_height > 1080
-                        {
-                            4
-                        } else {
-                            3
-                        };
+                        // let font_scale = if self.todo_text.len() < 1024 && self.screen_height > 1080;
+                        let font_scale = 2;
 
                         draw::text::draw_text(
                             buffer.as_mut(),

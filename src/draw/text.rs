@@ -1,16 +1,21 @@
-use std::mem;
+use std::{mem, sync::LazyLock};
 
 use embedded_graphics::{
-    image::GetPixel, mono_font::ascii::FONT_7X13, pixelcolor::BinaryColor, prelude::*,
+    geometry::OriginDimensions,
+    image::{GetPixel, ImageRaw},
+    mono_font,
+    pixelcolor::BinaryColor,
+    prelude::*,
 };
 
-const FONT_CHAR_WIDTH: u32 = 7;
-const FONT_CHAR_HEIGHT: u32 = 13;
+const FONT: mono_font::MonoFont = mono_font::ascii::FONT_7X13;
+static FONT_CHAR_WIDTH: LazyLock<u32> = LazyLock::new(|| FONT.image.size().width / 16);
+static FONT_CHAR_HEIGHT: LazyLock<u32> = LazyLock::new(|| FONT.image.size().height / 6);
 const ASCII_START: u8 = 32;
 
 /// Samples a pixel from the font atlas for a given character at local coordinates.
 fn sample_atlas(
-    font_image: &impl GetPixel<Color = BinaryColor>,
+    font_image: &ImageRaw<'_, BinaryColor>,
     ascii_val: u8,
     x: u32,
     y: u32,
@@ -20,8 +25,8 @@ fn sample_atlas(
     let atlas_idx = (ascii_val - ASCII_START) as u32;
     let atlas_col = atlas_idx % chars_per_row;
     let atlas_row = atlas_idx / chars_per_row;
-    let atlas_char_x = atlas_col * FONT_CHAR_WIDTH;
-    let atlas_char_y = atlas_row * FONT_CHAR_HEIGHT;
+    let atlas_char_x = atlas_col * *FONT_CHAR_WIDTH;
+    let atlas_char_y = atlas_row * *FONT_CHAR_HEIGHT;
 
     let src_x = atlas_char_x + (x / scale);
     let src_y = atlas_char_y + (y / scale);
@@ -113,13 +118,13 @@ pub fn draw_text_wrapped(
     scale: u8,
     wrap_width: Option<usize>,
 ) {
-    let font_image = &FONT_7X13.image;
+    let font_image = &FONT.image;
     let img_width = font_image.size().width;
-    let chars_per_row = img_width / FONT_CHAR_WIDTH;
+    let chars_per_row = img_width / *FONT_CHAR_WIDTH;
 
     let scale = scale as u32;
-    let scaled_char_width = FONT_CHAR_WIDTH * scale;
-    let scaled_char_height = FONT_CHAR_HEIGHT * scale;
+    let scaled_char_width = *FONT_CHAR_WIDTH * scale;
+    let scaled_char_height = *FONT_CHAR_HEIGHT * scale;
 
     // Wrap text into lines
     let text_len = text.chars().count();
