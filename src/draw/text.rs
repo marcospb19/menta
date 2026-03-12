@@ -133,9 +133,9 @@ pub fn draw_text_wrapped(
 
                     if let Some(color) = font_image.pixel(point) {
                         let color = if color == BinaryColor::On {
-                            0xffffffff
+                            0xffff_ffff
                         } else {
-                            0x00000000
+                            0x0000_0000
                         };
                         let index = dst_y * width + dst_x;
                         buffer[index as usize] = color;

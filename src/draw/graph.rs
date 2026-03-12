@@ -89,14 +89,12 @@ pub fn draw_contribution_graph(
                 } else {
                     continue;
                 }
+            } else if let Some(level) = cell_value(grid, row, col) {
+                *level_colors
+                    .get(level as usize)
+                    .unwrap_or_else(|| level_colors.last().unwrap())
             } else {
-                if let Some(level) = cell_value(grid, row, col) {
-                    *level_colors
-                        .get(level as usize)
-                        .unwrap_or_else(|| level_colors.last().unwrap())
-                } else {
-                    continue;
-                }
+                continue;
             };
 
             let index = draw_y * width + draw_x;

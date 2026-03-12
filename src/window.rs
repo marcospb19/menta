@@ -23,9 +23,7 @@ pub fn get_x11_window_id(window: &Window) -> XWindow {
 pub unsafe fn open_x11_connection() -> (*mut x11_dl::xlib::Display, Xlib) {
     let xlib = Xlib::open().expect("Failed to open Xlib");
     let display = unsafe { (xlib.XOpenDisplay)(std::ptr::null()) };
-    if display.is_null() {
-        panic!("Failed to open X display");
-    }
+    assert!(!display.is_null(), "Failed to open X display");
     (display, xlib)
 }
 
@@ -50,7 +48,7 @@ pub unsafe fn set_override_redirect(
     let mut swa: x11_dl::xlib::XSetWindowAttributes = unsafe { std::mem::zeroed() };
     swa.override_redirect = 1;
     unsafe {
-        (xlib.XChangeWindowAttributes)(display, window, CWOverrideRedirect, &mut swa);
+        (xlib.XChangeWindowAttributes)(display, window, CWOverrideRedirect, &raw mut swa);
         (xlib.XSync)(display, 0);
     }
 }
@@ -95,7 +93,7 @@ pub unsafe fn set_window_type_desktop(
             4,
             32,
             0,
-            &wm_window_type_desktop as *const _ as *const u8,
+            (&raw const wm_window_type_desktop).cast::<u8>(),
             1,
         );
     }
@@ -116,7 +114,7 @@ pub unsafe fn set_win_layer_zero(
             6,
             32,
             0,
-            &layer as *const _ as *const u8,
+            (&raw const layer).cast::<u8>(),
             1,
         );
     }
@@ -145,7 +143,7 @@ pub unsafe fn set_net_wm_states(display: *mut x11_dl::xlib::Display, xlib: &Xlib
             4,
             32,
             0,
-            states.as_ptr() as *const u8,
+            states.as_ptr().cast::<u8>(),
             4,
         );
     }

@@ -175,7 +175,7 @@ impl ApplicationHandler for App {
                         && self.width > 0
                         && self.height > 0
                     {
-                        buffer.fill(0x00000000);
+                        buffer.fill(0x0000_0000);
 
                         draw::graph::draw_contribution_graph(
                             buffer.as_mut(),

@@ -44,9 +44,7 @@ pub fn load_contribution_grid(force_update: bool) -> ContributionGrid {
                 .duration_since(modified)
                 .unwrap_or(Duration::MAX);
 
-            const TWO_HOURS: Duration = Duration::from_secs(60 * 60 * 2);
-
-            if age < TWO_HOURS {
+            if age < Duration::from_hours(2) {
                 break 'should_read_from_cache true;
             }
         }
@@ -85,7 +83,7 @@ fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
         return grid;
     }
 
-    let old_num_cols = old_rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    let old_num_cols = old_rows.iter().map(Vec::len).max().unwrap_or(0);
     if old_num_cols == 0 {
         return grid;
     }
@@ -130,7 +128,7 @@ fn rotate_to_monday_start(grid: ContributionGrid) -> ContributionGrid {
 /// with 0 contributions. This function checks the last day with data in the
 /// grid and removes it if it's ahead of the current local day.
 fn remove_last_day_if_future(grid: ContributionGrid) -> ContributionGrid {
-    let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    let num_cols = grid.rows.iter().map(Vec::len).max().unwrap_or(0);
     if num_cols == 0 || grid.rows.len() != 7 {
         return grid;
     }
@@ -192,7 +190,7 @@ fn remove_last_day_if_future(grid: ContributionGrid) -> ContributionGrid {
 /// The grid is then trimmed so that the first visible column is
 /// `max(0, streak_start_col - 2)`.
 fn trim_to_streak(grid: ContributionGrid) -> ContributionGrid {
-    let num_cols = grid.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    let num_cols = grid.rows.iter().map(Vec::len).max().unwrap_or(0);
     if num_cols == 0 || grid.rows.len() != 7 {
         return grid;
     }
@@ -291,7 +289,7 @@ fn fetch_grid_and_parse() -> ContributionGrid {
     // order.
     let td_re =
         Regex::new(r#"<td\b[^>]*\bclass="[^"]*ContributionCalendar-day[^"]*"[^>]*/?\s*>"#).unwrap();
-    let id_re = Regex::new(r#"contribution-day-component-(\d+)-(\d+)"#).unwrap();
+    let id_re = Regex::new(r"contribution-day-component-(\d+)-(\d+)").unwrap();
     let level_re = Regex::new(r#"data-level="(\d)""#).unwrap();
 
     let mut max_col: usize = 0;
