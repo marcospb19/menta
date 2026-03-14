@@ -1,4 +1,4 @@
-#![feature(iter_intersperse)]
+#![feature(iter_intersperse, duration_millis_float)]
 
 mod contributions;
 mod draw;
@@ -27,7 +27,7 @@ use winit::{
 
 use crate::contributions::{ContributionGrid, load_contribution_grid};
 
-const MAX_FPS: u64 = 1;
+const MAX_FPS: f64 = 0.5;
 pub const OPACITY_PERCENT: f32 = 50.0;
 pub const CLEAR_VERTICAL_BORDERS_HEIGHT: u32 = 24;
 
@@ -240,8 +240,8 @@ impl ApplicationHandler for App {
                                 (self.screen_width * CLEAR_VERTICAL_BORDERS_HEIGHT) as usize;
                             let len = buffer.len();
 
-                            buffer[..border_pixel_count as usize].fill(0x0);
-                            buffer[len - border_pixel_count as usize..].fill(0x0);
+                            buffer[..border_pixel_count].fill(0x0);
+                            buffer[len - border_pixel_count..].fill(0x0);
                         }
 
                         let _ = buffer.present();
@@ -258,15 +258,15 @@ impl ApplicationHandler for App {
         }
 
         let now = Instant::now();
-        let frame_duration_nanos = Duration::from_secs(1).as_nanos() as u64 / MAX_FPS;
+        let frame_duration_millis = (Duration::from_secs(1).as_millis_f64() / MAX_FPS) as u64;
 
-        let elapsed_nanos = now.duration_since(self.state.start_time).as_nanos();
-        let expected_frame = (elapsed_nanos / frame_duration_nanos as u128) as u64;
+        let elapsed_millis = now.duration_since(self.state.start_time).as_millis();
+        let expected_frame = (elapsed_millis / frame_duration_millis as u128) as u64;
 
         // If we are more than 5 frames behind, reset start_time to avoid aggressive fast-forwarding
         if expected_frame > self.state.total_frames + 5 {
             self.state.start_time =
-                now - Duration::from_nanos(self.state.total_frames * frame_duration_nanos);
+                now - Duration::from_millis(self.state.total_frames * frame_duration_millis);
         }
 
         if expected_frame >= self.state.total_frames {
@@ -277,7 +277,7 @@ impl ApplicationHandler for App {
         }
 
         let next_target = self.state.start_time
-            + Duration::from_nanos(self.state.total_frames * frame_duration_nanos);
+            + Duration::from_millis(self.state.total_frames * frame_duration_millis);
         event_loop.set_control_flow(ControlFlow::WaitUntil(next_target));
     }
 }
