@@ -5,6 +5,7 @@ mod draw;
 mod window;
 
 use std::{
+    env, fs,
     num::NonZeroU32,
     path::PathBuf,
     rc::Rc,
@@ -13,7 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use notify::{RecursiveMode, Watcher};
+use notify::{EventKind, RecursiveMode, Watcher};
 use time::Weekday;
 use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{
@@ -107,11 +108,11 @@ impl App {
 
 fn spawn_file_watcher_thread() -> Receiver<String> {
     let (todo_sender, todo_receiver) = channel::<String>();
-    let todo_path = PathBuf::from(std::env::var("HOME").unwrap()).join("todo.txt");
+    let todo_path = PathBuf::from(env::var("HOME").unwrap()).join("todo.txt");
 
     thread::spawn(move || {
         // Read initial content
-        if let Ok(content) = std::fs::read_to_string(&todo_path) {
+        if let Ok(content) = fs::read_to_string(&todo_path) {
             let _ = todo_sender.send(content);
         }
 
@@ -124,11 +125,13 @@ fn spawn_file_watcher_thread() -> Receiver<String> {
         }
 
         // Wait for events and send updates
-        for _ in rx.iter().filter_map(Result::ok) {
-            let Ok(content) = std::fs::read_to_string(&todo_path) else {
-                eprintln!("failed to read");
-                return;
-            };
+        while let Ok(event) = rx.recv() {
+            let event = event.unwrap();
+            if !matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
+                continue;
+            }
+
+            let content = fs::read_to_string(&todo_path).unwrap();
             let _ = todo_sender.send(content);
         }
     });
