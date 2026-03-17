@@ -9,7 +9,7 @@ use std::{
     num::NonZeroU32,
     path::PathBuf,
     rc::Rc,
-    sync::mpsc::{Receiver, channel},
+    sync::mpsc::{Receiver, TryRecvError, channel},
     thread,
     time::{Duration, Instant},
 };
@@ -78,17 +78,22 @@ impl App {
         let today = time::OffsetDateTime::now_local().unwrap().weekday();
 
         if let Some(graph_receiver) = &self.grid_receiver {
-            if let Ok(new_grid) = graph_receiver.try_recv() {
-                self.contribution_grid = new_grid;
-                self.grid_receiver = None;
+            match graph_receiver.try_recv() {
+                Ok(new_grid) => {
+                    self.contribution_grid = new_grid;
+                    self.current_day = today;
+                    self.grid_receiver = None;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    self.grid_receiver = None;
+                }
+                Err(TryRecvError::Empty) => {
+                    return;
+                }
             }
-
-            return;
         }
 
         if today != self.current_day {
-            self.current_day = today;
-
             let (sender, receiver) = channel::<ContributionGrid>();
             self.grid_receiver = Some(receiver);
 
