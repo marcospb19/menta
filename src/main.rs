@@ -5,7 +5,7 @@ mod draw;
 mod window;
 
 use std::{
-    env, fs,
+    env,
     num::NonZeroU32,
     path::PathBuf,
     rc::Rc,
@@ -14,6 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use fs_err as fs;
 use notify::{EventKind, RecursiveMode, Watcher};
 use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{

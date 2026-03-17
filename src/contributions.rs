@@ -1,9 +1,10 @@
 use std::{
-    env, fs,
+    env,
     path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
 
+use fs_err as fs;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, Weekday};
