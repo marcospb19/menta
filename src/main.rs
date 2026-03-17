@@ -15,7 +15,6 @@ use std::{
 };
 
 use notify::{EventKind, RecursiveMode, Watcher};
-use time::Weekday;
 use window::{ScreenDimensions, keep_window_lowered, setup_x11_window};
 use winit::{
     application::ApplicationHandler,
@@ -50,7 +49,7 @@ struct App {
     screen_height: u32,
     state: RenderState,
     contribution_grid: ContributionGrid,
-    current_day: Weekday,
+    current_day: u16,
     grid_receiver: Option<Receiver<ContributionGrid>>,
     todo_text: String,
     file_content_receiver: Receiver<String>,
@@ -67,7 +66,7 @@ impl App {
             screen_height: 0,
             state: RenderState::new(),
             contribution_grid: load_contribution_grid(false),
-            current_day: time::OffsetDateTime::now_local().unwrap().weekday(),
+            current_day: time::OffsetDateTime::now_local().unwrap().ordinal(),
             grid_receiver: None,
             todo_text: String::new(),
             file_content_receiver: spawn_file_watcher_thread(),
@@ -75,7 +74,7 @@ impl App {
     }
 
     fn check_contributions_grid_update_after_midnight(&mut self) {
-        let today = time::OffsetDateTime::now_local().unwrap().weekday();
+        let today = time::OffsetDateTime::now_local().unwrap().ordinal();
 
         if let Some(graph_receiver) = &self.grid_receiver {
             match graph_receiver.try_recv() {
