@@ -136,7 +136,9 @@ fn spawn_file_watcher_thread() -> Receiver<String> {
                 continue;
             }
 
-            let content = fs::read_to_string(&todo_path).unwrap();
+            let Ok(content) = fs::read_to_string(&todo_path) else {
+                continue;
+            };
             let _ = todo_sender.send(content);
         }
     });
